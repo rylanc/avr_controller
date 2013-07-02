@@ -1,0 +1,193 @@
+#include "AVRController.h"
+#include "ConfigTranslators.h"
+#include <functional>
+#include <chrono>
+#include <thread>
+
+#include <boost/asio/write.hpp>
+#include <boost/asio/read_until.hpp>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/xml_parser.hpp>
+
+#include <iostream>
+using namespace std;
+
+void walk_tree(const boost::property_tree::ptree &pt, size_t level)
+{
+  for (const boost::property_tree::ptree::value_type &child : pt)
+  {
+    for (size_t i = 0; i < level; i++)
+      cout << "\t";
+    cout << child.first;
+    boost::optional<string> value = child.second.get_value_optional<string>();
+    if (value)
+      cout << " = " << *value;
+    cout << endl;
+    walk_tree(child.second, level+1);
+  }
+}
+
+AVRController::AVRController(boost::asio::io_service &io_service)
+  : m_serial_port(io_service), m_stop_timer(io_service)
+{
+  load_config();
+  request_current_state();
+  start_read();
+}
+
+void AVRController::load_config()
+{
+  using boost::property_tree::ptree;
+  using boost::asio::serial_port;
+
+  ptree pt;
+  read_xml("config.xml", pt);
+
+  //walk_tree(pt, 0);
+
+  string device = pt.get<string>("avr_controller.serial_settings.<xmlattr>.device");
+  m_serial_port.open(device);
+
+  unsigned int baud_rate =
+    pt.get<unsigned int>("avr_controller.serial_settings.<xmlattr>.baud_rate");
+  if (baud_rate)
+    m_serial_port.set_option(serial_port::baud_rate(baud_rate));
+
+  boost::optional<serial_port::parity::type> parity =
+    pt.get_optional<serial_port::parity::type>("avr_controller.serial_settings.<xmlattr>.parity");
+  if (parity)
+    m_serial_port.set_option(serial_port::parity(*parity));
+
+  boost::optional<serial_port::stop_bits::type> stop_bits =
+    pt.get_optional<serial_port::stop_bits::type>("avr_controller.serial_settings.<xmlattr>.stop_bits");
+  if (stop_bits)
+    m_serial_port.set_option(serial_port::stop_bits(*stop_bits));
+
+  boost::optional<unsigned int> character_size =
+    pt.get_optional<unsigned int>("avr_controller.serial_settings.<xmlattr>.character_size");
+  if (character_size)
+    m_serial_port.set_option(serial_port::character_size(*character_size));
+
+  for (ptree::value_type &child : pt.get_child("avr_controller.play_state")) {
+    string command = child.second.get<string>("<xmlattr>.command");
+    string value = child.second.get<string>("<xmlattr>.value");
+    size_t delay = child.second.get<size_t>("<xmlattr>.delay", 20);
+    m_play_state.push_back({command, value, delay});
+    m_current_state[command] = "";
+  }
+
+  m_stop_timer_duration =
+    pt.get<size_t>("avr_controller.stop_state.<xmlattr>.seconds_to_wait", 90);
+
+  for (ptree::value_type &child : pt.get_child("avr_controller.stop_state")) {
+    if (child.first == "state") {
+      string command = child.second.get<string>("<xmlattr>.command");
+      string value = child.second.get<string>("<xmlattr>.value");
+      size_t delay = child.second.get<size_t>("<xmlattr>.delay", 20);
+      m_stop_state.push_back({command, value, delay});
+      m_current_state[command] = "";
+    }
+    else if (child.first == "cancel_if") {
+      string event = child.second.get<string>("<xmlattr>.event");
+      m_cancel_stop_events.push_back(event);
+    }
+  }  
+}
+
+void AVRController::request_current_state()
+{
+  for (StateMap::value_type &state : m_current_state) { 
+    string req = state.first + "?\r";
+    // TODO: Should this be async? If not, we should at least check for errors
+    cout << "Sending: " << req << endl;
+    boost::asio::write(m_serial_port, boost::asio::buffer(req));
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  }
+}
+
+void AVRController::on_play()
+{
+  m_stop_timer.cancel();
+  set_avr_state(m_play_state);
+}
+
+void AVRController::on_stop()
+{
+  m_stop_timer.expires_from_now(std::chrono::seconds(m_stop_timer_duration));
+  m_stop_timer.async_wait(std::bind(&AVRController::on_stop_timer, this,
+				    std::placeholders::_1));
+}
+
+void AVRController::on_stop_timer(const boost::system::error_code& error)
+{
+  if (error)
+    return;
+
+  set_avr_state(m_stop_state);
+}
+
+void AVRController::set_avr_state(const StateList &state_list)
+{
+  for (const AVRState &state : state_list) {
+    const string &current_value = m_current_state[state.command];
+    if (state.value != current_value) {
+      string command = state.command + state.value + "\r";
+      cout << "Sending (" << state.delay << "): " << command << endl;
+      boost::asio::write(m_serial_port, boost::asio::buffer(command));
+      std::this_thread::sleep_for(std::chrono::milliseconds(state.delay));
+    }
+  }
+}
+
+void AVRController::start_read()
+{
+  boost::asio::async_read_until(m_serial_port, m_read_buf, '\r',
+    std::bind(&AVRController::handle_read, this,
+    std::placeholders::_1, std::placeholders::_2));
+}
+
+void AVRController::handle_read(const boost::system::error_code &error, size_t size)
+{
+  if (error)
+    return;
+
+  cout << "Timer expires: " << m_stop_timer.expires_from_now().count() << endl;
+
+  std::istream is(&m_read_buf);
+  std::string rsp;
+  std::getline(is, rsp, '\r');
+
+  cout << "Received: " << rsp << endl;
+
+  if (m_stop_timer.expires_from_now().count() > 0) {
+    for (const string &event : m_cancel_stop_events) {
+      if (rsp.compare(0, event.length(), event) == 0) {
+	cout << "Cancelling timer" << endl;
+	m_stop_timer.cancel();
+      }
+    }
+  }
+
+  parse_response(rsp);
+
+  start_read();
+}
+
+void AVRController::parse_response(const std::string &rsp)
+{
+  // TODO: Is there a generic way to do this?
+  if (rsp.find(' ') != string::npos)
+    return;
+
+  for (StateMap::value_type &state : m_current_state) {
+    if (rsp.compare(0, state.first.length(), state.first) == 0) {
+      string value = rsp.substr(state.first.length());
+      state.second = value;
+      break;
+    }
+  }
+
+  //for (StateMap::value_type &state : m_current_state) {
+  //  cout << "Key: " << state.first << " Value: " << state.second << endl;
+  //}
+}
