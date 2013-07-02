@@ -1,0 +1,12 @@
+<avr_controller>
+  <serial_settings device="/dev/ttyUSB0" aud_rate="9600" parity="none" stop_bits="one" character_size="8"/>
+  <play_state>
+    <state command="PW" value="ON" delay="2100"/>
+    <state command="MV" value="59"/>
+    <state command="SI" value="DBS"/>
+  </play_state>
+  <stop_state seconds_to_wait="90">
+    <state command="PW" value="STANDBY"/>
+    <cancel_if event="SI"/>
+  </stop_state>
+</avr_controller>
