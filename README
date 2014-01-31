@@ -1,0 +1,1 @@
+A small service that triggers settings changes on Denon receivers. I currently use it to turn on and set the current input/volume/etc. when shairport begins playing.
