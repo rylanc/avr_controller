@@ -3,7 +3,7 @@
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/system_timer.hpp>
 
-#include <map>
+#include <unordered_map>
 #include <list>
 
 class AVRController
@@ -23,7 +23,7 @@ private:
     size_t delay;
   };
 
-  typedef std::map<std::string, std::string> StateMap;
+  typedef std::unordered_map<std::string, std::string> StateMap;
   typedef std::list<AVRState> StateList;
 
   void load_config();

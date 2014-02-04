@@ -1,6 +1,5 @@
 #include "AVRController.h"
 #include "ConfigTranslators.h"
-#include <functional>
 #include <chrono>
 #include <thread>
 
@@ -8,6 +7,7 @@
 #include <boost/asio/read_until.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
+#include <boost/algorithm/string/predicate.hpp>
 
 #include <iostream>
 using namespace std;
@@ -68,7 +68,7 @@ void AVRController::load_config()
   if (character_size)
     m_serial_port.set_option(serial_port::character_size(*character_size));
 
-  for (ptree::value_type &child : pt.get_child("avr_controller.play_state")) {
+  for (auto &child : pt.get_child("avr_controller.play_state")) {
     string command = child.second.get<string>("<xmlattr>.command");
     string value = child.second.get<string>("<xmlattr>.value");
     size_t delay = child.second.get<size_t>("<xmlattr>.delay", 20);
@@ -79,7 +79,7 @@ void AVRController::load_config()
   m_stop_timer_duration =
     pt.get<size_t>("avr_controller.stop_state.<xmlattr>.seconds_to_wait", 90);
 
-  for (ptree::value_type &child : pt.get_child("avr_controller.stop_state")) {
+  for (auto &child : pt.get_child("avr_controller.stop_state")) {
     if (child.first == "state") {
       string command = child.second.get<string>("<xmlattr>.command");
       string value = child.second.get<string>("<xmlattr>.value");
@@ -96,7 +96,7 @@ void AVRController::load_config()
 
 void AVRController::request_current_state()
 {
-  for (StateMap::value_type &state : m_current_state) { 
+  for (auto &state : m_current_state) { 
     string req = state.first + "?\r";
     // TODO: Should this be async? If not, we should at least check for errors
     cout << "Sending: " << req << endl;
@@ -114,8 +114,7 @@ void AVRController::on_play()
 void AVRController::on_stop()
 {
   m_stop_timer.expires_from_now(std::chrono::seconds(m_stop_timer_duration));
-  m_stop_timer.async_wait(std::bind(&AVRController::on_stop_timer, this,
-				    std::placeholders::_1));
+  m_stop_timer.async_wait([=](const boost::system::error_code& err) { on_stop_timer(err); });
 }
 
 void AVRController::on_stop_timer(const boost::system::error_code& error)
@@ -128,7 +127,7 @@ void AVRController::on_stop_timer(const boost::system::error_code& error)
 
 void AVRController::set_avr_state(const StateList &state_list)
 {
-  for (const AVRState &state : state_list) {
+  for (auto &state : state_list) {
     const string &current_value = m_current_state[state.command];
     if (state.value != current_value) {
       string command = state.command + state.value + "\r";
@@ -142,8 +141,7 @@ void AVRController::set_avr_state(const StateList &state_list)
 void AVRController::start_read()
 {
   boost::asio::async_read_until(m_serial_port, m_read_buf, '\r',
-    std::bind(&AVRController::handle_read, this,
-    std::placeholders::_1, std::placeholders::_2));
+    [=](const boost::system::error_code &err, size_t size) { handle_read(err, size); });
 }
 
 void AVRController::handle_read(const boost::system::error_code &error, size_t size)
@@ -158,13 +156,12 @@ void AVRController::handle_read(const boost::system::error_code &error, size_t s
   std::getline(is, rsp, '\r');
 
   cout << "Received: " << rsp << endl;
-
+  
   if (m_stop_timer.expires_from_now().count() > 0) {
-    for (const string &event : m_cancel_stop_events) {
-      if (rsp.compare(0, event.length(), event) == 0) {
-	cout << "Cancelling timer" << endl;
-	m_stop_timer.cancel();
-      }
+    if (std::any_of(m_cancel_stop_events.begin(), m_cancel_stop_events.end(),
+                    [&](const string &event) { return boost::starts_with(rsp, event); })) {
+      cout << "Cancelling timer" << endl;
+      m_stop_timer.cancel();
     }
   }
 
@@ -179,13 +176,11 @@ void AVRController::parse_response(const std::string &rsp)
   if (rsp.find(' ') != string::npos)
     return;
 
-  for (StateMap::value_type &state : m_current_state) {
-    if (rsp.compare(0, state.first.length(), state.first) == 0) {
-      string value = rsp.substr(state.first.length());
-      state.second = value;
-      break;
-    }
-  }
+  auto it = std::find_if(m_current_state.begin(), m_current_state.end(),
+                         [&](const StateMap::value_type& state)
+                         { return boost::starts_with(rsp, state.first); });
+  if (it != m_current_state.end())
+    it->second = rsp.substr(it->first.length());
 
   //for (StateMap::value_type &state : m_current_state) {
   //  cout << "Key: " << state.first << " Value: " << state.second << endl;

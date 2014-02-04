@@ -40,7 +40,7 @@ private:
   void start_accept();
 
   void handle_accept(CommandConnection::Ptr new_connection,
-    const boost::system::error_code& error);
+                     const boost::system::error_code& error);
 
   boost::asio::ip::tcp::acceptor m_acceptor;
   AVRController &m_controller;
