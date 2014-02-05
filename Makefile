@@ -6,7 +6,7 @@ RM=rm -f
 #LDLIBS=$(shell root-config --libs)
 CPPFLAGS=-O0 -D_DEBUG -g -Wall -std=c++11
 LDFLAGS=
-LDLIBS=-lm -lpthread -lboost_system -lboost_program_option
+LDLIBS=-lm -lpthread -lboost_system -lboost_program_options
 
 SRCS=main.cpp AVRController.cpp CommandConnection.cpp Daemon.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))

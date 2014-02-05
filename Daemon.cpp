@@ -18,7 +18,7 @@ Daemon::~Daemon()
   }
 }
 
-int Daemon::init()
+int Daemon::init(const std::string &pidfile)
 {
   boost::asio::io_service &io_service = m_signals.get_io_service();
 
@@ -27,7 +27,8 @@ int Daemon::init()
   // re-read of a configuration file.
   m_signals.add(SIGINT);
   m_signals.add(SIGTERM);
-  m_signals.async_wait([&](const boost::system::error_code&, int) { io_service.stop(); });
+  m_signals.async_wait([&](const boost::system::error_code&, int)
+		       { io_service.stop(); });
                      
   // Inform the io_service that we are about to become a daemon. The
   // io_service cleans up any internal resources, such as threads, that may
@@ -117,7 +118,7 @@ int Daemon::init()
       return 1;
     }
     
-    m_lock_fd = open("bla.pid", O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
+    m_lock_fd = open(pidfile.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR);
     if (m_lock_fd < 0) {
       // error
     }
@@ -126,7 +127,7 @@ int Daemon::init()
       // error
     }
     
-    //dprintf(m_lock_fd, "%d\n", getpid());
+    dprintf(m_lock_fd, "%d\n", getpid());
 
     // Inform the io_service that we have finished becoming a daemon. The
     // io_service uses this opportunity to create any internal file descriptors

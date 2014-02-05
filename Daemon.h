@@ -8,7 +8,7 @@ public:
   Daemon(boost::asio::io_service &io_service);
   ~Daemon();
   
-  int init();
+  int init(const std::string &pidfile);
   
 private:
   boost::asio::signal_set m_signals;
