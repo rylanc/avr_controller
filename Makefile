@@ -1,21 +1,27 @@
+TARGET=avr_controller
 CC=gcc
 CXX=g++
 RM=rm -f
-CPPFLAGS=-O0 -D_DEBUG -U__STRICT_ANSI__-g -Wall -std=c++11
+CPPFLAGS=-O0 -D_DEBUG -g -Wall -std=c++11
 LDFLAGS=
+LDLIBS=-lm -lpthread 
 ifeq ($(OS),Windows_NT)
-	LDLIBS=-lm -lpthread -lboost_system-mt -lboost_program_options-mt
+	LDLIBS+=-lboost_system-mt -lboost_program_options-mt
+	CPPFLAGS+=-U__STRICT_ANSI__
 else
-	LDLIBS=-lm -lpthread -lboost_system -lboost_program_options
+	LDLIBS+=-lboost_system -lboost_program_options
 endif
 
 SRCS=main.cpp AVRController.cpp CommandConnection.cpp Daemon.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 
-all: avr_controller
+all: $(TARGET)
 
-avr_controller: $(OBJS)
-	$(CXX) $(LDFLAGS) -o avr_controller $(OBJS) $(LDLIBS) 
+$(TARGET): pre.h.gch $(OBJS)
+	$(CXX) $(LDFLAGS) -o $(TARGET) $(OBJS) $(LDLIBS)
+	
+pre.h.gch: pre.h
+	$(CXX) $(CPPFLAGS) pre.h
 
 depend: .depend
 
@@ -27,6 +33,6 @@ clean:
 	$(RM) $(OBJS)
 
 dist-clean: clean
-	$(RM) *~ .dependtool
+	$(RM) *~ .depend *.gch
 
 include .depend

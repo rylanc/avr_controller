@@ -1,3 +1,4 @@
+#include "pre.h"
 #include "CommandConnection.h"
 #include "AVRController.h"
 

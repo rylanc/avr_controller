@@ -1,3 +1,4 @@
+#include "pre.h"
 #include "AVRController.h"
 #include "ConfigTranslators.h"
 #include <chrono>
