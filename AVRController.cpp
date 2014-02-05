@@ -27,21 +27,22 @@ void walk_tree(const boost::property_tree::ptree &pt, size_t level)
   }
 }
 
-AVRController::AVRController(boost::asio::io_service &io_service)
+AVRController::AVRController(boost::asio::io_service &io_service,
+                             const std::string &cfg_file)
   : m_serial_port(io_service), m_stop_timer(io_service)
 {
-  load_config();
+  load_config(cfg_file);
   request_current_state();
   start_read();
 }
 
-void AVRController::load_config()
+void AVRController::load_config(const std::string &cfg_file)
 {
   using boost::property_tree::ptree;
   using boost::asio::serial_port;
 
   ptree pt;
-  read_xml("config.xml", pt);
+  read_xml(cfg_file, pt);
 
   //walk_tree(pt, 0);
 

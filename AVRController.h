@@ -9,7 +9,7 @@
 class AVRController
 {
 public:
-  AVRController(boost::asio::io_service &io_service);
+  AVRController(boost::asio::io_service &io_service, const std::string &cfg_file);
   
   void on_play();
   void on_stop();
@@ -26,7 +26,7 @@ private:
   typedef std::unordered_map<std::string, std::string> StateMap;
   typedef std::list<AVRState> StateList;
 
-  void load_config();
+  void load_config(const std::string &cfg_file);
 
   void request_current_state();
 

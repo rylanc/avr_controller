@@ -1,12 +1,13 @@
 CC=gcc
-CXX=g++-4.7
+CXX=g++
 RM=rm -f
-#CPPFLAGS=-g $(shell root-config --cflags)
-#LDFLAGS=-g $(shell root-config --ldflags)
-#LDLIBS=$(shell root-config --libs)
-CPPFLAGS=-O0 -D_DEBUG -g -Wall -std=c++11
+CPPFLAGS=-O0 -D_DEBUG -U__STRICT_ANSI__-g -Wall -std=c++11
 LDFLAGS=
-LDLIBS=-lm -lpthread -lboost_system -lboost_program_options
+ifeq ($(OS),Windows_NT)
+	LDLIBS=-lm -lpthread -lboost_system-mt -lboost_program_options-mt
+else
+	LDLIBS=-lm -lpthread -lboost_system -lboost_program_options
+endif
 
 SRCS=main.cpp AVRController.cpp CommandConnection.cpp Daemon.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
@@ -14,7 +15,7 @@ OBJS=$(subst .cpp,.o,$(SRCS))
 all: avr_controller
 
 avr_controller: $(OBJS)
-	g++-4.7 $(LDFLAGS) -o avr_controller $(OBJS) $(LDLIBS) 
+	$(CXX) $(LDFLAGS) -o avr_controller $(OBJS) $(LDLIBS) 
 
 depend: .depend
 
