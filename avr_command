@@ -1,0 +1,12 @@
+#!/usr/bin/python
+
+import socket
+import sys
+
+#create an UNIX, STREAMing socket
+s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+s.connect("sock")
+s.send(sys.argv[1] + "\n")
+s.recv(1)
+s.shutdown(1)
+s.close()
