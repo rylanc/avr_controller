@@ -7,8 +7,6 @@
 # Default-Stop:      0 1 6
 ### END INIT INFO
 
-# Do not modify this file. Edit /etc/default/shairport instead !
-
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="AVR Controller"
 NAME=avr_controller

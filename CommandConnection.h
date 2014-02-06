@@ -8,7 +8,8 @@ class AVRController;
 class CommandConnection
 {
 public:
-  CommandConnection(boost::asio::io_service &io_service, AVRController &controller);
+  CommandConnection(boost::asio::io_service &io_service, AVRController &controller,
+                    const std::string &sock_name);
 
 private:
   void start_accept();

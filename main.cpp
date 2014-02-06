@@ -3,7 +3,9 @@
 #include "AVRController.h"
 #include "Daemon.h"
 
-#include <boost/program_options.hpp>
+#include <boost/program_options/parsers.hpp>
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/variables_map.hpp>
 
 #include <iostream>
 
@@ -22,6 +24,8 @@ int main(int argc, char* argv[])
        "Redirect all output to a file")
       ("pidfile,P", po::value<std::string>()->default_value("/var/run/avr_controller.pid"),
        "Write daemon's pid to a file on startup")
+      ("socket-name,s", po::value<std::string>()->default_value("/var/run/avr_controller.sock"),
+       "Location of UNIX domain socket used for issuing commands")
       ;
     
     po::variables_map vm;
@@ -42,7 +46,8 @@ int main(int argc, char* argv[])
     }
     
     AVRController controller(io_service, vm["cfg-file"].as<std::string>());
-    CommandConnection connection(io_service, controller);;
+    CommandConnection connection(io_service, controller,
+                                 vm["socket-name"].as<std::string>());
     
     io_service.run();
   }

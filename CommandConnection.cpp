@@ -8,12 +8,13 @@
 #include <boost/asio/read_until.hpp>
 
 CommandConnection::CommandConnection(boost::asio::io_service &io_service,
-				                     AVRController &controller)
+                                     AVRController &controller,
+                                     const std::string &sock_name)
   : m_acceptor(io_service, boost::asio::local::stream_protocol()),
     m_socket(io_service), m_controller(controller)
 {
-  std::remove("sock");
-  m_acceptor.bind(boost::asio::local::stream_protocol::endpoint("sock"));
+  std::remove(sock_name.c_str());
+  m_acceptor.bind(boost::asio::local::stream_protocol::endpoint(sock_name));
   m_acceptor.listen();
   start_accept();
 }
