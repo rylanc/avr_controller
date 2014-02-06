@@ -24,7 +24,7 @@ private:
   CommandConnection(boost::asio::io_service &io_service, AVRController &controller)
     : m_socket(io_service), m_controller(controller) {}
 
-  void handle_read(const boost::system::error_code &error, size_t size);
+  void handle_read(const boost::system::error_code &error);
 
   boost::asio::ip::tcp::socket m_socket;
   boost::asio::streambuf m_read_buf;
@@ -43,5 +43,24 @@ private:
                      const boost::system::error_code& error);
 
   boost::asio::ip::tcp::acceptor m_acceptor;
+  AVRController &m_controller;
+};
+
+
+class CommandConnection2
+{
+public:
+  CommandConnection2(boost::asio::io_service &io_service, AVRController &controller);
+
+private:
+  void start_accept();
+  void start_read();
+
+  void handle_accept(const boost::system::error_code& error);
+  void handle_read(const boost::system::error_code &error);
+
+  boost::asio::ip::tcp::acceptor m_acceptor;
+  boost::asio::ip::tcp::socket m_socket;
+  boost::asio::streambuf m_read_buf;
   AVRController &m_controller;
 };

@@ -30,12 +30,12 @@ private:
 
   void request_current_state();
 
-  void parse_response(const std::string &rsp);
+  void handle_response(const std::string &rsp);
 
   void set_avr_state(const StateList &state_list);
 
   void start_read();
-  void handle_read(const boost::system::error_code &error, size_t size);
+  void handle_read(const boost::system::error_code &error);
   
   void on_stop_timer(const boost::system::error_code& error);
 

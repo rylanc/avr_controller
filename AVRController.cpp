@@ -2,6 +2,7 @@
 #include "AVRController.h"
 #include "ConfigTranslators.h"
 #include <chrono>
+#include <iostream>
 #include <thread>
 
 #include <boost/asio/write.hpp>
@@ -10,23 +11,7 @@
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
-#include <iostream>
 using namespace std;
-
-void walk_tree(const boost::property_tree::ptree &pt, size_t level)
-{
-  for (const boost::property_tree::ptree::value_type &child : pt)
-  {
-    for (size_t i = 0; i < level; i++)
-      cout << "\t";
-    cout << child.first;
-    boost::optional<string> value = child.second.get_value_optional<string>();
-    if (value)
-      cout << " = " << *value;
-    cout << endl;
-    walk_tree(child.second, level+1);
-  }
-}
 
 AVRController::AVRController(boost::asio::io_service &io_service,
                              const std::string &cfg_file)
@@ -44,8 +29,6 @@ void AVRController::load_config(const std::string &cfg_file)
 
   ptree pt;
   read_xml(cfg_file, pt);
-
-  //walk_tree(pt, 0);
 
   string device = pt.get<string>("avr_controller.serial_settings.<xmlattr>.device");
   m_serial_port.open(device);
@@ -100,9 +83,11 @@ void AVRController::request_current_state()
 {
   for (auto &state : m_current_state) { 
     string req = state.first + "?\r";
-    // TODO: Should this be async? If not, we should at least check for errors
     cout << "Sending: " << req << endl;
-    boost::asio::write(m_serial_port, boost::asio::buffer(req));
+    boost::system::error_code error;
+    boost::asio::write(m_serial_port, boost::asio::buffer(req), error);
+    if (error)
+      std::cerr << "Serial port write failed: " << error.message() << std::endl;
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
   }
 }
@@ -121,8 +106,10 @@ void AVRController::on_stop()
 
 void AVRController::on_stop_timer(const boost::system::error_code& error)
 {
-  if (error)
+  if (error) {
+    std::cerr << "Stop timer failed: " << error.message() << std::endl;
     return;
+  }
 
   set_avr_state(m_stop_state);
 }
@@ -134,7 +121,10 @@ void AVRController::set_avr_state(const StateList &state_list)
     if (state.value != current_value) {
       string command = state.command + state.value + "\r";
       cout << "Sending (" << state.delay << "): " << command << endl;
-      boost::asio::write(m_serial_port, boost::asio::buffer(command));
+      boost::system::error_code error;
+      boost::asio::write(m_serial_port, boost::asio::buffer(command), error);
+      if (error)
+        std::cerr << "Serial port write failed: " << error.message() << std::endl;
       std::this_thread::sleep_for(std::chrono::milliseconds(state.delay));
     }
   }
@@ -143,13 +133,15 @@ void AVRController::set_avr_state(const StateList &state_list)
 void AVRController::start_read()
 {
   boost::asio::async_read_until(m_serial_port, m_read_buf, '\r',
-    [=](const boost::system::error_code &err, size_t size) { handle_read(err, size); });
+    [=](const boost::system::error_code &err, size_t) { handle_read(err); });
 }
 
-void AVRController::handle_read(const boost::system::error_code &error, size_t size)
+void AVRController::handle_read(const boost::system::error_code &error)
 {
-  if (error)
+  if (error) {
+    std::cerr << "Serial port read failed: " << error.message() << std::endl;
     return;
+  }
 
   cout << "Timer expires: " << m_stop_timer.expires_from_now().count() << endl;
 
@@ -167,12 +159,12 @@ void AVRController::handle_read(const boost::system::error_code &error, size_t s
     }
   }
 
-  parse_response(rsp);
+  handle_response(rsp);
 
   start_read();
 }
 
-void AVRController::parse_response(const std::string &rsp)
+void AVRController::handle_response(const std::string &rsp)
 {
   // TODO: Is there a generic way to do this?
   if (rsp.find(' ') != string::npos)
@@ -183,8 +175,4 @@ void AVRController::parse_response(const std::string &rsp)
                          { return boost::starts_with(rsp, state.first); });
   if (it != m_current_state.end())
     it->second = rsp.substr(it->first.length());
-
-  //for (StateMap::value_type &state : m_current_state) {
-  //  cout << "Key: " << state.first << " Value: " << state.second << endl;
-  //}
 }

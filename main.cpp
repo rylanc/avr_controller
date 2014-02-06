@@ -12,16 +12,16 @@ namespace po = boost::program_options;
 int main(int argc, char* argv[])
 {
   try {
-    po::options_description desc("Allowed options");
+    po::options_description desc("Options");
     desc.add_options()
-      ("help,h", "generate help message")
+      ("help,h", "Display this information")
       ("cfg-file,c", po::value<std::string>()->default_value("config.xml"),
-       "config file")
-      ("daemon", "run as daemon")
+       "Use this file for configuration")
+      ("daemon", "Run as a daemon")
       ("log,l", po::value<std::string>()->default_value("/var/log/avr_controller.log"),
-       "log file")
+       "Redirect all output to a file")
       ("pidfile,P", po::value<std::string>()->default_value("/var/run/avr_controller.pid"),
-       "pid file")
+       "Write daemon's pid to a file on startup")
       ;
     
     po::variables_map vm;
@@ -33,16 +33,12 @@ int main(int argc, char* argv[])
       return 1;
     }
     
-    bool run_as_daemon = false;
-    if (vm.count("daemon"))
-      run_as_daemon = true;
-    
     boost::asio::io_service io_service;
     
     std::unique_ptr<Daemon> daemon;
-    if (run_as_daemon) {
+    if (vm.count("daemon")) {
       daemon.reset(new Daemon(io_service, vm["pidfile"].as<std::string>(),
-                   vm["log"].as<std::string>()));
+                              vm["log"].as<std::string>()));
     }
     
     AVRController controller(io_service, vm["cfg-file"].as<std::string>());
