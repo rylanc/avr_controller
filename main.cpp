@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
     po::options_description desc("Options");
     desc.add_options()
       ("help,h", "Display this information")
-      ("cfg-file,c", po::value<std::string>()->default_value("config.xml"),
+      ("cfg-file,c", po::value<std::string>()->default_value("/etc/avr_controller.xml"),
        "Use this file for configuration")
       ("daemon", "Run as a daemon")
       ("log,l", po::value<std::string>()->default_value("/var/log/avr_controller.log"),

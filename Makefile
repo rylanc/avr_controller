@@ -2,7 +2,7 @@ TARGET=avr_controller
 CC=gcc
 CXX=g++
 RM=rm -f
-CPPFLAGS=-O0 -D_DEBUG -g -Wall -std=c++11
+CPPFLAGS=-Wall -std=c++11
 LDFLAGS=
 LDLIBS=-lm -lpthread 
 ifeq ($(OS),Windows_NT)
@@ -12,10 +12,18 @@ else
 	LDLIBS+=-lboost_system -lboost_program_options
 endif
 
+PREFIX?=/usr
+
 SRCS=main.cpp AVRController.cpp CommandConnection.cpp Daemon.cpp
 OBJS=$(subst .cpp,.o,$(SRCS))
 
 all: $(TARGET)
+
+install: $(TARGET)
+	install -m 755 -d $(PREFIX)/bin
+	install -m 755 $(TARGET) $(PREFIX)/bin/$(TARGET)
+	install -m 755 avr_command $(PREFIX)/bin/avr_command
+	install -m 644 avr_controller.xml /etc/avr_controller.xml
 
 $(TARGET): pre.h.gch $(OBJS)
 	$(CXX) $(LDFLAGS) -o $(TARGET) $(OBJS) $(LDLIBS)

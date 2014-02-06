@@ -10,11 +10,10 @@
 PATH=/sbin:/usr/sbin:/bin:/usr/bin
 DESC="AVR Controller"
 NAME=avr_controller
-#DAEMON=/usr/bin/avr_controller
-DAEMON=/home/pi/projects/avr_controller/avr_controller
+DAEMON=/usr/bin/avr_controller
 
 # Configuration defaults
-CFGFILE=/home/pi/projects/avr_controller/config.xml
+CFGFILE=/etc/avr_controller.xml
 LOGFILE=/var/log/$NAME.log
 PIDFILE=/var/run/$NAME.pid
 
