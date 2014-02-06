@@ -19,7 +19,7 @@ all: $(TARGET)
 
 $(TARGET): pre.h.gch $(OBJS)
 	$(CXX) $(LDFLAGS) -o $(TARGET) $(OBJS) $(LDLIBS)
-	
+
 pre.h.gch: pre.h
 	$(CXX) $(CPPFLAGS) pre.h
 
