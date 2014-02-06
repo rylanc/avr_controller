@@ -42,7 +42,7 @@ int main(int argc, char* argv[])
     }
     
     AVRController controller(io_service, vm["cfg-file"].as<std::string>());
-    CommandAcceptor acceptor(io_service, controller);
+    CommandConnection connection(io_service, controller);;
     
     io_service.run();
   }

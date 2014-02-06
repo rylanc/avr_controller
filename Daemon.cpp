@@ -16,7 +16,7 @@ Daemon::Daemon(boost::asio::io_service &io_service, const std::string &pidfile,
   // also want to register for other signals, such as SIGHUP to trigger a
   // re-read of a configuration file
   m_signals.async_wait([&](const boost::system::error_code&, int)
-		                 { io_service.stop(); });
+                       { io_service.stop(); });
                      
   // Inform the io_service that we are about to become a daemon. The
   // io_service cleans up any internal resources, such as threads, that may

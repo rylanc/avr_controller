@@ -4,13 +4,12 @@
 #include <chrono>
 #include <iostream>
 #include <list>
-#include <memory>
 #include <system_error>
 #include <thread>
 #include <unordered_map>
 
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/local/stream_protocol.hpp>
 #include <boost/asio/read_until.hpp>
 #include <boost/asio/signal_set.hpp>
 #include <boost/asio/serial_port.hpp>

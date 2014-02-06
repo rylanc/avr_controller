@@ -5,3 +5,4 @@ avr_controller
 avr_controller.exe
 avr_controller.exe.stackdump
 *.gch
+sock
